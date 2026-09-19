@@ -1,0 +1,26 @@
+name = "catppuccin-macchiato"
+
+[colors]
+foreground = "#cad3f5"
+background = "#24273a"
+
+black = "#494d64"
+red = "#ed8796"
+green = "#a6da95"
+yellow = "#eed49f"
+blue = "#8aadf4"
+magenta = "#f5bde6"
+cyan = "#8bd5ca"
+white = "#b8c0e0"
+
+bright_black = "#5b6078"
+bright_red = "#ed8796"
+bright_green = "#a6da95"
+bright_yellow = "#eed49f"
+bright_blue = "#8aadf4"
+bright_magenta = "#c6a0f6"
+bright_cyan = "#91d7e3"
+bright_white = "#a5adcb"
+
+[chrome]
+title_fg = "#939ab7"
