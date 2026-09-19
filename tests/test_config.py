@@ -67,3 +67,10 @@ def test_standard_mode_env_aliases(monkeypatch):
     assert config.location == "europe-west1"
 
 
+def test_default_compaction_and_idle_reset():
+    config = NarratorConfig()
+    assert config.compaction_token_threshold == 40000
+    assert config.idle_reset_seconds == 1800.0
+
+
+

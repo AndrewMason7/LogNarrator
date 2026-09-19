@@ -28,6 +28,9 @@ RATE_LIMIT_PATTERN = re.compile(
 LOG_BOUNDARY_START = "<<<LOG_STREAM_UNTRUSTED_INPUT_START>>>"
 LOG_BOUNDARY_END = "<<<LOG_STREAM_UNTRUSTED_INPUT_END>>>"
 
+ANSI_ESCAPE_PATTERN = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
+
 class AgentDiagnosticCore:
     """Manages the Google Antigravity Agent lifecycle and processes LogBatches safely."""
 
@@ -39,8 +42,9 @@ class AgentDiagnosticCore:
             structured_output=config.structured_output,
         )
         self.tools = []
+        self._inspected_files: set[str] = set()
         if config.inspect_code:
-            self.tools.append(create_code_inspection_tool(config.code_root))
+            self.tools.append(create_code_inspection_tool(config.code_root, inspected_files=self._inspected_files))
         self._agent_ctx: Agent | None = None
         self._agent: Any | None = None
         # Mutex lock prevents concurrent initialization races
@@ -64,6 +68,21 @@ class AgentDiagnosticCore:
                 self._agent_ctx = None
                 self._agent = None
 
+    async def reset(self) -> None:
+        """Resets active agent conversation to avoid context drift."""
+        await self.stop()
+        await self.start()
+
+    def get_inspected_files(self) -> list[str]:
+        """Returns sorted list of files inspected by code inspection tool."""
+        return sorted(self._inspected_files)
+
+    def pop_inspected_files(self) -> list[str]:
+        """Returns and clears files inspected during the current diagnostic turn."""
+        files = sorted(self._inspected_files)
+        self._inspected_files.clear()
+        return files
+
     def get_total_usage(self) -> UsageMetadata | None:
         """Retrieves cumulative token and thought usage metadata for the active session."""
         if self._agent and hasattr(self._agent, "conversation") and self._agent.conversation:
@@ -71,8 +90,10 @@ class AgentDiagnosticCore:
         return None
 
     def _sanitize_log_text(self, text: str) -> str:
+        # Strip ANSI escape codes to prevent token bleed into LLM context
+        clean = ANSI_ESCAPE_PATTERN.sub("", text)
         # Strip accidental or adversarial boundary collisions
-        return text.replace(LOG_BOUNDARY_START, "[BOUNDARY_STRIPPED]").replace(LOG_BOUNDARY_END, "[BOUNDARY_STRIPPED]")
+        return clean.replace(LOG_BOUNDARY_START, "[BOUNDARY_STRIPPED]").replace(LOG_BOUNDARY_END, "[BOUNDARY_STRIPPED]")
 
     def _build_prompt(self, batch: LogBatch) -> str:
         # Strict boundary fencing instructions against prompt injection

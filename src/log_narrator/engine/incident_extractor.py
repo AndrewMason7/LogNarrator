@@ -24,7 +24,13 @@ class IncidentExtractor:
     def __init__(self, incident_pattern: str = r"\[INCIDENT:\s*([^\]\n]+)\]?") -> None:
         self.incident_pattern = re.compile(incident_pattern)
 
-    def extract(self, turn_id: int, batch: LogBatch, narrative: str) -> IncidentEvent | None:
+    def extract(
+        self,
+        turn_id: int,
+        batch: LogBatch,
+        narrative: str,
+        inspected_files: list[str] | None = None,
+    ) -> IncidentEvent | None:
         """Detects if an incident occurred and constructs an IncidentEvent."""
         incident_match = self.incident_pattern.search(narrative)
         has_panic = bool(RUNTIME_PANIC_SIGNATURES.search(batch.raw_text))
@@ -52,4 +58,5 @@ class IncidentExtractor:
             raw_log_snippet=batch.raw_text,
             root_cause=root_cause,
             recommended_fix=recommended_fix,
+            inspected_files=inspected_files or [],
         )

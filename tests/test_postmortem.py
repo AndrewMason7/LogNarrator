@@ -28,3 +28,22 @@ def test_incident_recording_and_markdown_export(tmp_path: Path):
     assert "Database Pool Exhaustion" in content
     assert "/app/db.py" in content
     assert "INC-001" in content
+
+
+def test_postmortem_session_observability():
+    from unittest.mock import MagicMock
+    recorder = IncidentRecorder()
+    mock_usage = MagicMock()
+    mock_usage.total_token_count = 18420
+    mock_usage.prompt_token_count = 14200
+    mock_usage.candidates_token_count = 4220
+    mock_usage.thoughts_token_count = 800
+
+    content = recorder.generate_markdown(usage=mock_usage, turn_count=3)
+    assert "### Session Observability" in content
+    assert "Total Diagnostic Turns**: 3" in content
+    assert "18,420" in content
+    assert "14,200" in content
+    assert "4,220" in content
+    assert "800" in content
+

@@ -68,3 +68,17 @@ def test_rich_tui_sink_close_graceful():
     # Closing an unstarted or started sink should not raise
     sink.close()
 
+
+def test_stdout_sink_handles_broken_pipe():
+    from unittest.mock import patch
+
+    sink = StdoutSink()
+    with patch("sys.stdout.write", side_effect=BrokenPipeError):
+        # Should not raise exception
+        sink.stream_token("test token")
+        sink.stream_thought("test thought")
+        sink.emit_raw_log("test raw log")
+        sink.start_turn(1)
+        sink.end_turn()
+
+

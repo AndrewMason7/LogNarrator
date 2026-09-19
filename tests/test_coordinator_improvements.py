@@ -35,6 +35,7 @@ async def test_process_turn_buffers_tokens_and_polymorphic_stream():
         yield ("token", "detected!")
         
     mock_agent.stream_diagnostic = mock_stream_diagnostic
+    mock_agent.pop_inspected_files.return_value = []
     mock_sink = MagicMock()
     mock_recorder = MagicMock()
     mock_extractor = MagicMock()
@@ -55,7 +56,7 @@ async def test_process_turn_buffers_tokens_and_polymorphic_stream():
     mock_sink.stream_thought.assert_called_once_with("thinking hard")
     assert mock_sink.stream_token.call_count == 2
     # Verify extractor received full joined response
-    mock_extractor.extract.assert_called_once_with(1, batch, "Incident detected!")
+    mock_extractor.extract.assert_called_once_with(1, batch, "Incident detected!", inspected_files=[])
 
 
 @pytest.mark.asyncio

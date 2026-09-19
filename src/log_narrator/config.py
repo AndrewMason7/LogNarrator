@@ -64,6 +64,10 @@ class PipelineConfig(BaseModel):
         default=True,
         description="Enable automated source code inspection for stack traces.",
     )
+    idle_reset_seconds: float = Field(
+        default=1800.0,
+        description="Idle duration in seconds before resetting agent context to prevent drift.",
+    )
 
 
 class ModelConfig(BaseModel):
@@ -133,7 +137,7 @@ class TuningConfig(BaseModel):
         description="Budget guardrail: maximum total tokens allowed in session.",
     )
     compaction_token_threshold: int | None = Field(
-        default=None,
+        default=40000,
         description="Token threshold triggering automatic rolling context compaction.",
     )
     mcp_servers: list[str] = Field(
@@ -167,6 +171,7 @@ class _EnvSettings(BaseSettings):
     export_markdown: Path | None = None
     ignored_patterns: list[str] = DEFAULT_IGNORED_PATTERNS
     inspect_code: bool = True
+    idle_reset_seconds: float = 1800.0
 
     model: str | None = None
     api_key: str | None = Field(
@@ -200,7 +205,7 @@ class _EnvSettings(BaseSettings):
     app_data_dir: Path | None = None
     max_model_calls: int | None = None
     max_total_tokens: int | None = None
-    compaction_token_threshold: int | None = None
+    compaction_token_threshold: int | None = 40000
     mcp_servers: list[str] = Field(default_factory=list)
     structured_output: bool = False
 
@@ -374,6 +379,14 @@ class NarratorConfig(BaseSettings):
     @inspect_code.setter
     def inspect_code(self, val: bool) -> None:
         self._pipeline.inspect_code = val
+
+    @property
+    def idle_reset_seconds(self) -> float:
+        return self._pipeline.idle_reset_seconds
+
+    @idle_reset_seconds.setter
+    def idle_reset_seconds(self, val: float) -> None:
+        self._pipeline.idle_reset_seconds = val
 
     # -----------------------------------------------------------------
     # Model Delegations

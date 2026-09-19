@@ -126,3 +126,26 @@ async def test_coordinator_shutdown_timeout(monkeypatch):
     monkeypatch.setattr(asyncio, "wait_for", fast_wait_for)
     await coordinator.run()
     assert sink.closed is True
+
+
+@pytest.mark.asyncio
+async def test_coordinator_idle_session_reset():
+    config = NarratorConfig(idle_reset_seconds=10.0)
+    agent_core = MagicMock()
+    agent_core.reset = AsyncMock()
+    agent_core.stream_diagnostic = MagicMock(return_value=AsyncMock())
+    sink = MagicMock()
+    coordinator = PipelineCoordinator(config=config, agent_core=agent_core, sink=sink)
+
+    # Set last turn time in the past
+    coordinator._last_turn_time = 0.0
+    batch = LogBatch(lines=[LogLine(content="Line", line_number=1)])
+
+    async def mock_diag(b):
+        yield "token", "diag"
+
+    agent_core.stream_diagnostic = mock_diag
+
+    await coordinator._process_turn(1, batch)
+    agent_core.reset.assert_awaited_once()
+

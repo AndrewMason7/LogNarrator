@@ -54,3 +54,13 @@ async def test_concurrent_start_mutex_locking():
         await asyncio.gather(*(core.start() for _ in range(5)))
         assert enter_count == 1
         assert core._agent is mock_agent_instance
+
+
+def test_sanitize_log_text_strips_ansi_escapes():
+    config = NarratorConfig(api_key="test-key")
+    core = AgentDiagnosticCore(config)
+    colored_text = "\x1b[31m[ERROR]\x1b[0m \x1b[33m[payment-svc]\x1b[0m connection timed out"
+    clean_text = core._sanitize_log_text(colored_text)
+    assert "\x1b" not in clean_text
+    assert "[ERROR] [payment-svc] connection timed out" == clean_text
+

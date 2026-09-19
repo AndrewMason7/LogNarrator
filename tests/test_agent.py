@@ -245,5 +245,38 @@ def test_code_inspection_handles_empty_file(tmp_path: Path):
     assert "empty.py" in output
 
 
+def test_code_inspection_container_path_resolution(tmp_path: Path):
+    sub = tmp_path / "services"
+    sub.mkdir()
+    target_file = sub / "billing.py"
+    target_file.write_text("def process_charge():\n    return True\n")
+
+    tool_func = create_code_inspection_tool(code_root=tmp_path)
+    # Container paths starting with /app or /var/www
+    output1 = tool_func(file_path="/app/services/billing.py", start_line=1, end_line=5)
+    assert "process_charge" in output1
+
+    output2 = tool_func(file_path="/var/www/html/services/billing.py", start_line=1, end_line=5)
+    assert "process_charge" in output2
+
+    output3 = tool_func(file_path="services/billing.py", start_line=1, end_line=5)
+    assert "process_charge" in output3
+
+
+def test_code_inspection_tracks_inspected_files(tmp_path: Path):
+    source_file = tmp_path / "app.py"
+    source_file.write_text("print('hello')\n")
+    inspected = set()
+    tool_func = create_code_inspection_tool(code_root=tmp_path, inspected_files=inspected)
+    tool_func(file_path="app.py", start_line=1, end_line=1)
+    assert "app.py" in inspected
+
+    config = NarratorConfig(code_root=tmp_path, inspect_code=True)
+    core = AgentDiagnosticCore(config)
+    assert core.get_inspected_files() == []
+
+
+
+
 
 

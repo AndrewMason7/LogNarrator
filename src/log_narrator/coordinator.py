@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import time
 from pathlib import Path
 
 from google.antigravity.types import AntigravityCancelledError
@@ -50,6 +51,8 @@ class PipelineCoordinator:
             debounce_seconds=config.debounce_seconds,
             max_batch_lines=config.max_batch_lines,
         )
+        self._turn_count: int = 0
+        self._last_turn_time: float = time.monotonic()
 
     @staticmethod
     def _create_sink(sink_type: str) -> BaseOutputSink:
@@ -85,15 +88,26 @@ class PipelineCoordinator:
         finally:
             await self.reader.stop()
             await self.buffer.close()
+            usage = (
+                self.agent_core.get_total_usage()
+                if hasattr(self.agent_core, "get_total_usage")
+                else None
+            )
             try:
                 await asyncio.wait_for(self.agent_core.stop(), timeout=3.0)
             except (asyncio.TimeoutError, Exception) as e:
                 logger.warning("Error stopping agent core: %s", e)
             self.sink.close()
 
-        return self.recorder.export_markdown()
+        return self.recorder.export_markdown(usage=usage, turn_count=self._turn_count)
 
     async def _process_turn(self, turn_id: int, batch: LogBatch) -> None:
+        now = time.monotonic()
+        if (now - self._last_turn_time) > self.config.idle_reset_seconds:
+            if hasattr(self.agent_core, "reset"):
+                await self.agent_core.reset()
+        self._last_turn_time = now
+        self._turn_count = max(self._turn_count, turn_id)
         max_attempts = max(1, self.config.max_retries)
 
         if self.config.structured_output:
@@ -108,6 +122,11 @@ class PipelineCoordinator:
                         actions = getattr(dossier, "recommended_actions", [])
                         remediation = getattr(dossier, "recommended_fix", None) or "\n".join(f"- {a}" for a in actions)
                         affected = getattr(dossier, "affected_components", None) or getattr(dossier, "affected_files", [])
+                        inspected = (
+                            self.agent_core.pop_inspected_files()
+                            if hasattr(self.agent_core, "pop_inspected_files")
+                            else []
+                        ) or affected
                         incident_id = getattr(dossier, "incident_id", f"INC-{turn_id:03d}")
                         event = IncidentEvent(
                             incident_id=incident_id,
@@ -115,7 +134,7 @@ class PipelineCoordinator:
                             raw_log_snippet=batch.raw_text,
                             root_cause=dossier.root_cause,
                             recommended_fix=remediation,
-                            inspected_files=affected,
+                            inspected_files=inspected,
                         )
                         self.recorder.record(event)
                     self.sink.end_turn()
@@ -198,7 +217,12 @@ class PipelineCoordinator:
                 break
 
         full_response = "".join(response_parts)
+        inspected = (
+            self.agent_core.pop_inspected_files()
+            if hasattr(self.agent_core, "pop_inspected_files")
+            else []
+        )
         # Extract incident if detected
-        event = self.extractor.extract(turn_id, batch, full_response)
+        event = self.extractor.extract(turn_id, batch, full_response, inspected_files=inspected)
         if event:
             self.recorder.record(event)

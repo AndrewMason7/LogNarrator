@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import signal
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -70,11 +72,21 @@ def main(**kwargs: Any) -> None:
     coordinator = PipelineCoordinator(config=config, reader=reader)
 
     try:
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    except (AttributeError, ValueError):
+        pass
+
+    try:
         saved_report = asyncio.run(coordinator.run())
         if saved_report:
             print(f"\n[LogNarrator] Postmortem exported to {saved_report}")
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, BrokenPipeError):
         pass
+    except Exception as e:
+        if debug:
+            raise
+        print(f"\n[LogNarrator Error] {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
