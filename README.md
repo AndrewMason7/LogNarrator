@@ -261,7 +261,7 @@ src/log_narrator/
 ### Core Runtime
 | Package | Version | Purpose |
 | :--- | :--- | :--- |
-| [`google-antigravity`](https://pypi.org/project/google-antigravity/) | `>=0.1.17` | Agent orchestration, thought streaming, context compaction, and MCP tool execution |
+| [`google-antigravity`](https://pypi.org/project/google-antigravity/) | `>=0.1.18` | Agent orchestration, thought streaming, context compaction, and MCP tool execution |
 | [`pydantic`](https://pydantic.dev/) | `>=2.7.0` | Strongly-typed data schemas and incident dossier validation (`IncidentDossier`) |
 | [`pydantic-settings`](https://docs.pydantic.dev/latest/concepts/pydantic_settings/) | `>=2.2.0` | Unified configuration loading across `.env`, CLI flags, and GCP environment variables |
 | [`rich`](https://rich.readthedocs.io/) | `>=13.7.0` | Split-screen terminal dashboard (`rich_tui`), markdown rendering, and thought panels |
